@@ -40,6 +40,8 @@ type serverHandshakeState struct {
 	suite           *cipherSuite
 	ellipticOk      bool
 	ecdsaOk         bool
+	rsaDecryptOk    bool
+	rsaSignOk       bool
 	chachaOk        bool
 	sessionTicketOK bool
 	useRC4          uint8
@@ -291,7 +293,27 @@ Curves:
 		}
 	}
 
-	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
+	if priv, ok := hs.cert.PrivateKey.(crypto.Signer); ok {
+		switch priv.Public().(type) {
+		case *ecdsa.PublicKey:
+			hs.ecdsaOk = true
+		case *rsa.PublicKey:
+			hs.rsaSignOk = true
+		default:
+			c.sendAlert(alertInternalError)
+			return false, fmt.Errorf("crypto/tls: unsupported signing key type (%T)", priv.Public())
+		}
+	}
+
+	if priv, ok := hs.cert.PrivateKey.(crypto.Decrypter); ok {
+		switch priv.Public().(type) {
+		case *rsa.PublicKey:
+			hs.rsaDecryptOk = true
+		default:
+			c.sendAlert(alertInternalError)
+			return false, fmt.Errorf("crypto/tls: unsupported decryption key type (%T)", priv.Public())
+		}
+	}
 
 	// Select client auth policy for current connection
 	c.clientAuth = config.ClientAuth
@@ -325,8 +347,7 @@ Curves:
 	} else {
 		// Normal cipher suite negotiation
 		for _, id := range preferenceList {
-			if hs.suite, _ = c.tryCipherSuite(id, supportedList, c.vers,
-				hs.ellipticOk, hs.ecdsaOk, hs.chachaOk, hs.useRC4); hs.suite != nil {
+			if hs.setCipherSuite(id, supportedList, c.vers) {
 				break
 			}
 		}
@@ -348,7 +369,8 @@ Curves:
 				if !CheckSuiteECDHE(id) {
 					continue
 				}
-				if hs.suite, _ = c.tryCipherSuite(id, supportedList, c.vers, true, hs.ecdsaOk, hs.chachaOk, hs.useRC4); hs.suite != nil {
+				hs.ellipticOk = true
+				if hs.setCipherSuite(id, supportedList, c.vers) {
 					break
 				}
 			}
@@ -509,9 +531,7 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 	}
 
 	// Check that we also support the ciphersuite from the session.
-	hs.suite, _ = c.tryCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), hs.sessionState.vers,
-		hs.ellipticOk, hs.ecdsaOk, hs.chachaOk, hs.useRC4)
-	if hs.suite == nil {
+	if !hs.setCipherSuite(hs.sessionState.cipherSuite, c.config.cipherSuites(), hs.sessionState.vers) {
 		return false
 	}
 
@@ -977,6 +997,58 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 	}
 
 	return nil, 0
+}
+
+func (hs *serverHandshakeState) setCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16) bool {
+	for _, supported := range supportedCipherSuites {
+		if id == supported {
+			var candidate *cipherSuite
+
+			for _, s := range cipherSuites {
+				if s.id == id {
+					candidate = s
+					break
+				}
+			}
+			if candidate == nil {
+				continue
+			}
+			// Don't select a ciphersuite which we can't
+			// support for this client.
+			if candidate.flags&suiteECDHE != 0 {
+				if !hs.ellipticOk {
+					continue
+				}
+				if candidate.flags&suiteECDSA != 0 {
+					if !hs.ecdsaOk {
+						continue
+					}
+				} else if !hs.rsaSignOk {
+					continue
+				}
+			} else if !hs.rsaDecryptOk {
+				continue
+			}
+			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+				continue
+			}
+			if candidate.flags&suiteChacha20 != 0 && !hs.chachaOk {
+				continue
+			}
+			if candidate.flags&suiteRC4 != 0 && hs.useRC4 == disableRC4 {
+				continue
+			}
+			if candidate.flags&suiteRC4 == 0 && hs.useRC4 == onlyRC4 {
+				continue
+			}
+
+			hs.suite = candidate
+
+			return true
+		}
+	}
+
+	return false
 }
 
 func IsEcdheCipherSuite(suite interface{}) bool {
