@@ -1,0 +1,21 @@
+{
+    "hosts": [
+        "www.keyless.com"
+    ],
+    "key": {
+        "algo": "ecdsa",
+        "size": 384
+    },
+    "ca": {
+        "expiry": "876000h"
+    },
+    "names": [
+        {
+            "C": "CN",
+            "L": "Beijing",
+            "O": "Xiaomi Security",
+            "OU": "Test for Keyless",
+            "ST": "Beijing"
+        }
+    ]
+}

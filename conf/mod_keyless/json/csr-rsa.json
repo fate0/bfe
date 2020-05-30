@@ -1,0 +1,15 @@
+{
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "L": "Beijing",
+            "O": "Xiaomi Security",
+            "OU": "Test for Keyless",
+            "ST": "Beijing"
+        }
+    ]
+}
