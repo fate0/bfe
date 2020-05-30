@@ -30,6 +30,7 @@ import (
 	"github.com/baidu/bfe/bfe_modules/mod_header"
 	"github.com/baidu/bfe/bfe_modules/mod_http_code"
 	"github.com/baidu/bfe/bfe_modules/mod_key_log"
+	"github.com/baidu/bfe/bfe_modules/mod_keyless"
 	"github.com/baidu/bfe/bfe_modules/mod_logid"
 	"github.com/baidu/bfe/bfe_modules/mod_prison"
 	"github.com/baidu/bfe/bfe_modules/mod_redirect"
@@ -111,6 +112,9 @@ var moduleList = []bfe_module.BfeModule{
 
 	// mod_access
 	mod_access.NewModuleAccess(),
+
+	// mod_keyless
+	mod_keyless.NewModuleKeyless(),
 }
 
 // init modules list
