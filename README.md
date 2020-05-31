@@ -6,7 +6,7 @@
 ## 介绍
 
 BFE with keyless 是基于 BFE v0.10.0 版本进行修改，主要合并了两个 crypto/tls 官方 commit，
-以便于 bfe_tls 能够不直接使用 GO 代码中的 ECDSA/RSA 的 sign/decrypt 操作，转而使用用户提供的 sign/decrypt 操作。
+以便于 bfe_tls 能够不直接使用 Go 代码中的 ECDSA/RSA 的 sign/decrypt 操作，转而使用用户提供的 sign/decrypt 操作。
 增加了 `mod_keyless` 模块，将 gokeyless 应用到 BFE 上。
 
 ## 开始
@@ -217,6 +217,12 @@ Failed transactions:	           0
 Longest transaction:	        3.57
 Shortest transaction:	        0.00
 ```
+
+## 问题
+
+从刚刚 bandwidth 测试可以看出 rsa 每秒只能处理 2k 多个 sign/decrypt 请求，一旦超过这个数据，就会出现问题，
+而且如果 client 设置超时重试，那问题会变得更严重，不停的超时重试只会让 keyless server 处理越来越多的请求，直至崩溃。
+最后 keyless client(BFE) 发出去的 sign/decrypt 不会随着 client (browser) 中断而中断，等于就是让 keyless server 做无用功。 
 
 
 ## 代码比较
