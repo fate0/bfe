@@ -218,6 +218,56 @@ Longest transaction:	        3.57
 Shortest transaction:	        0.00
 ```
 
+#### rsa + siege + local
+
+不使用 keyless 方案
+
+```shell script
+siege -d 0 -c 100 -t 30S https://www.9.com:8443
+```
+
+```
+Lifting the server siege...
+Transactions:		       51303 hits
+Availability:		      100.00 %
+Elapsed time:		       29.06 secs
+Data transferred:	      192.41 MB
+Response time:		        0.06 secs
+Transaction rate:	     1765.42 trans/sec
+Throughput:		        6.62 MB/sec
+Concurrency:		       97.32
+Successful transactions:       51306
+Failed transactions:	           0
+Longest transaction:	        0.68
+Shortest transaction:	        0.00
+```
+
+qps 还降低了，因为 rsa sign/decrypt 也占用 cpu 资源
+
+#### http + siege
+
+不使用 https
+
+```shell script
+siege -d 0 -c 100 -t 30S https://www.9.com:8443
+```
+
+```
+Lifting the server siege...
+Transactions:		      132880 hits
+Availability:		      100.00 %
+Elapsed time:		       29.94 secs
+Data transferred:	      498.25 MB
+Response time:		        0.02 secs
+Transaction rate:	     4438.21 trans/sec
+Throughput:		       16.64 MB/sec
+Concurrency:		       99.40
+Successful transactions:      132880
+Failed transactions:	           0
+Longest transaction:	        1.07
+Shortest transaction:	        0.00
+```
+
 ## 问题
 
 从刚刚 bandwidth 测试可以看出 rsa 每秒只能处理 2k 多个 sign/decrypt 请求，一旦超过这个数据，就会出现问题，
